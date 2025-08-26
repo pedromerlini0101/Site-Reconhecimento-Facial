@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista de Registros</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      flex-direction: column;
+      justify-content: flex-start;
+      margin-top: 40px;
+    }
+    
+    h1 {
+      margin-bottom: 30px;
+    }
+
+    button {
+      padding: 8px 12px;
+      margin-bottom: 15px;
+      background-color: darkblue;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: midnightblue;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      width: 80%;
+    }
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      margin-bottom: 5px;
+      background: #f5f5f5;
+      border-radius: 5px;
+      color: black;
+    }
+
+    .delete {
+      cursor: pointer;
+      color: red;
+      font-weight: bold;
+    }
+
+    .delete:hover {
+      color: midnightblue;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Lista de Registros</h1>
+  <button id="clearAll">Deletar Todos</button>
+  <ul id="registros"></ul>
+
+  <script>
+    function loadRegistros() {
+      const lista = document.getElementById("registros");
+      lista.innerHTML = ""; // limpa a lista
+
+      const registros = JSON.parse(localStorage.getItem("registrosList")) || [];
+
+      registros.forEach((item, index) => {
+        const li = document.createElement("li");
+
+        // mostra apenas o nome (label) do rosto registrado
+        li.textContent = item.label;
+
+        // botão de deletar individual
+        const del = document.createElement("span");
+        del.textContent = "✖";
+        del.classList.add("delete");
+        del.onclick = () => {
+          registros.splice(index, 1);
+          localStorage.setItem("registrosList", JSON.stringify(registros));
+          loadRegistros();
+        };
+
+        li.appendChild(del);
+        lista.appendChild(li);
+      });
+    }
+
+    // botão de deletar todos
+    document.getElementById("clearAll").onclick = () => {
+      localStorage.removeItem("registrosList");
+      loadRegistros();
+    };
+
+    // inicializa a lista
+    loadRegistros();
+  </script>
+</body>
+
+</html>

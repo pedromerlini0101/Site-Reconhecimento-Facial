@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home Page</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .home-page-buttons {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 200px;
+      height: 200px;
+    }
+    
+    .home-page-buttons button {
+      height: 50px;
+      font-size: 18px;
+      font-weight: 400;
+      background-color: darkblue;
+      color: white;
+      border: none;
+      border-radius: 12px;
+    }
+    
+  .home-page-buttons button:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0 15px rgba(67, 97, 238, 0.5);;
+  }
+
+  .home-page-buttons button:active {
+    transform: scale(1.1);
+    transform: translateY(2px);
+  }
+  </style>
+</head>
+
+<body>
+  <div class="home-page-buttons">
+    <button>registrar</button>
+    <button>entrar</button>
+    <button>gerenciar</button>
+  </div>
+</body>
+
+<script>
+  const buttons = document.querySelectorAll('button')
+  buttons[0].onclick = function() {
+    window.location.href = 'registrar.html'
+  }
+  buttons[1].onclick = function() {
+    window.location.href = 'entrar.html'
+  }
+  buttons[2].onclick = function() {
+    window.location.href = 'registros.html'
+  }
+</script>
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>registrar</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    #invert-camera-btn {
+      width: 30px;
+      height: 30px;
+      padding: 5px;
+      opacity: 0.9;
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .camera {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      align-items: center;
+      width: 80%;
+    }
+    
+    .video-container {
+      position: relative;
+      margin: 10px;
+      width: 100%;
+    }
+    
+    .video-container video {
+      width: 100%;
+      border-radius: 2%;
+      transform: scaleX(-1);
+    }
+    
+    #capture-btn {
+      width: 50px;
+      aspect-ratio: 1 / 1;
+      border-radius: 100%;
+      border: none;
+    }
+    
+    #capture-btn:active {
+      transform: scale(1.5);
+    }
+    
+    #canvas-draw {
+      position: absolute;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="camera">
+      <h4>espere o quadrado azul aparecer</h4>
+    <div class="video-container">
+      <video autoplay></video>
+      <img id="invert-camera-btn" src="./imagens/seta_inverter.png">
+      <canvas id="canvas-draw"></canvas>
+    </div>
+    <button id="capture-btn" disabled></button>
+  </div>
+  
+  <canvas id="canvas-photo" style="display: none"></canvas>
+  <img style="display: none" id="foto">
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script>
+  // Recupera registros do localStorage (reconstruindo Float32Array)
+  const registrosRaw = JSON.parse(localStorage.getItem('registrosList')) || []
+  const registros = registrosRaw.map(r =>
+    new faceapi.LabeledFaceDescriptors(
+      r.label,
+      r.descriptors.map(d => new Float32Array(d))
+    )
+  )
+  
+  let estadoCameraAtual = 'user' // modo atual da camera
+  let gravacaoAtual = null // gravação atual
+  
+  const video = document.querySelector('video')
+  
+  // função pra acessar a camera e mostrar na tela
+  const handleCamera = async() => {
+    // para a gravação atual antes de começar outra
+    if(gravacaoAtual) {
+      gravacaoAtual.getTracks().forEach(tr => tr.stop())
+    }
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode: estadoCameraAtual}, audio:false })
+      video.srcObject = stream
+      gravacaoAtual = stream
+    }
+    catch(e) {
+      console.error('erro ao acessar camera:', e)
+    }
+  }
+  
+  // alterna o modo de camera e acessa a camera
+  document.querySelector('#invert-camera-btn').onclick = () => {
+    // inverte o video pra evitar o espelhamento da camera frontal
+    video.style.transform = (estadoCameraAtual == 'user')? 'scaleX(1)' : 'scaleX(-1)'
+    estadoCameraAtual = (estadoCameraAtual === 'user')? 'environment' : 'user'
+    handleCamera()
+  }
+  
+  // habilita o botão só quando a câmera já tiver carregado
+  video.onloadedmetadata = () => {
+    document.querySelector('#capture-btn').disabled = false
+  }
+  
+  // tira a foto ao clicar no botão
+  document.querySelector('#capture-btn').onclick = e => {
+    takePicture()
+    e.preventDefault()
+  }
+  
+  const canvas = document.querySelector('#canvas-photo')
+  const foto = document.querySelector('#foto')
+  
+  async function loadModels() {
+    try {
+      await Promise.all([
+        faceapi.nets.faceLandmark68Net.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models'),
+        faceapi.nets.faceRecognitionNet.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models'),
+        faceapi.nets.tinyFaceDetector.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models')
+      ])
+    }
+    catch (error) {
+      console.error('Erro ao carregar modelos:', error)
+    }
+  }
+  
+  async function takePicture() {
+    // define o tamanho do canvas
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    
+    const ctx = canvas.getContext('2d')
+    // limpa o canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    // desenha a captura de video no canvas
+    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
+    
+    // converte pra uma imagem jpeg
+    const data = canvas.toDataURL('image/jpeg')
+    foto.src = data
+    
+    // registra o rosto na lista de pessoas autorizadas
+    const detection = await faceapi.detectSingleFace(foto, new faceapi.TinyFaceDetectorOptions()
+    )
+    .withFaceLandmarks()
+    .withFaceDescriptor()
+    
+    if(detection){
+      const nome = prompt('Digite um nome para identificar esse rosto').trim()
+      const labeledDescriptor = new faceapi.LabeledFaceDescriptors(nome, [detection.descriptor])
+      registros.push(labeledDescriptor)
+
+      // salva convertendo Float32Array -> Array
+      localStorage.setItem('registrosList', JSON.stringify(
+        registros.map(ld => ({
+          label: ld.label,
+          descriptors: ld.descriptors.map(d => Array.from(d))
+        }))
+      ))
+
+      alert('Rosto registrado')
+      window.location.href = 'index.html'
+    }
+    else{
+      alert('Nenhum rosto detectado na imagem, tente de novo')
+    }
+  }
+  
+  // desenha quadrado em volta do rosto
+  async function drawBox() {
+    const displaySize = {width: video.clientWidth, height: video.clientHeight}
+    const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+    const canvasDraw = document.querySelector('#canvas-draw')
+    faceapi.matchDimensions(canvasDraw, displaySize)
+    const resizedResult = faceapi.resizeResults(result, displaySize)
+    faceapi.draw.drawDetections(canvasDraw, resizedResult)
+  }
+  
+  Promise.all([loadModels(), handleCamera()]).then(() => {
+    video.addEventListener('loadeddata', () => setInterval(() => {drawBox()}, 2000), {once: true})
+  })
+</script>
+</html>

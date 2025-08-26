@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>acesso protegido</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .camera {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 80%; /* ajuste se quiser preencher a tela */
+      height: auto;
+    }
+
+    .camera video {
+      width: 100%;
+      height: auto;
+      border-radius: 2%;
+      transform: scaleX(-1); /* espelha a câmera frontal */
+    }
+
+    .camera canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="camera">
+    <video autoplay muted playsinline></video>
+    <canvas></canvas>
+  </div>
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script>
+  const video = document.querySelector('video')
+  const canvas = document.querySelector('canvas')
+  const ctx = canvas.getContext('2d')
+  
+  let autorizado = false
+  
+  // --- Helpers ---
+  function readRegistros() {
+    // Lê do localStorage e aceita dois esquemas:
+    // 1) { label, descriptors: number[][] }
+    // 2) { nome,  descritores: number[][] }  (compatibilidade)
+    const raw = JSON.parse(localStorage.getItem('registrosList')) || []
+    return raw.map(r => {
+      const label = r.label ?? r.nome
+      const descs = r.descriptors ?? r.descritores ?? []
+      return new faceapi.LabeledFaceDescriptors(
+        label,
+        descs.map(d => new Float32Array(d))
+      )
+    })
+  }
+
+  async function startVideo() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false
+      })
+      video.srcObject = stream
+    } catch (e) {
+      console.error('Erro ao acessar câmera:', e)
+    }
+  }
+
+  async function loadModels() {
+    try {
+      await Promise.all([
+        faceapi.nets.faceLandmark68Net.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models'),
+        faceapi.nets.faceRecognitionNet.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models'),
+        faceapi.nets.tinyFaceDetector.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models')
+      ])
+      console.log('Modelos carregados')
+    } catch (error) {
+      console.error('Erro ao carregar modelos:', error)
+    }
+  }
+
+  function resizeCanvasToVideo() {
+    const width = video.clientWidth
+    const height = video.clientHeight
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width
+      canvas.height = height
+      faceapi.matchDimensions(canvas, { width, height })
+    }
+  }
+
+  async function runLoop(faceMatcher) {
+    resizeCanvasToVideo()
+
+    // Detecta um rosto
+    const detection = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceDescriptor()
+
+    // Limpa o canvas a cada frame
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    if (detection) {
+      const resized = faceapi.resizeResults(detection, { width: canvas.width, height: canvas.height })
+      const bestMatch = faceMatcher.findBestMatch(detection.descriptor)
+      const label = (bestMatch.label === 'unknown')
+        ? 'Desconhecido'
+        : `${bestMatch.label} (${bestMatch.distance.toFixed(2)})`
+        
+      if(label != 'Desconhecido') {
+        setTimeout(() => {window.location.href='autorizado.html'}, 2000)
+      }else{
+        alert('acesso bloqueado!')
+      }
+      
+      // Desenha a caixa com o nome
+      const drawBox = new faceapi.draw.DrawBox(resized.detection.box, { label })
+      drawBox.draw(canvas)
+    }
+
+    // Próximo frame
+    requestAnimationFrame(() => runLoop(faceMatcher))
+  }
+
+  async function main() {
+    const registros = readRegistros()
+    console.log('Registros carregados:', registros.length)
+
+    if (registros.length === 0) {
+      console.warn('Nenhum rosto registrado no localStorage (registrosList).')
+      // Ainda assim inicializa o loop só com o retângulo (sem nome)
+    }
+
+    const faceMatcher = new faceapi.FaceMatcher(registros, 0.6)
+
+    // Garante que o vídeo tenha dimensões antes de iniciar o loop
+    if (video.readyState >= 2) {
+      runLoop(faceMatcher)
+    } else {
+      video.addEventListener('loadedmetadata', () => runLoop(faceMatcher), { once: true })
+    }
+  }
+
+  // Fluxo: carrega modelos e câmera; quando o vídeo estiver pronto, roda o main
+  Promise.all([loadModels(), startVideo()])
+    .then(() => {
+      if (video.readyState >= 2) main()
+      else video.addEventListener('loadeddata', main, { once: true })
+    })
+</script>
+</html>
