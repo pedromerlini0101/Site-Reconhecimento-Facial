@@ -44,22 +44,23 @@
   const canvas = document.querySelector('canvas')
   const ctx = canvas.getContext('2d')
   
-  let autorizado = false
-  
   // --- Helpers ---
-  function readRegistros() {
-    // Lê do localStorage e aceita dois esquemas:
-    // 1) { label, descriptors: number[][] }
-    // 2) { nome,  descritores: number[][] }  (compatibilidade)
-    const raw = JSON.parse(localStorage.getItem('registrosList')) || []
-    return raw.map(r => {
-      const label = r.label ?? r.nome
-      const descs = r.descriptors ?? r.descritores ?? []
-      return new faceapi.LabeledFaceDescriptors(
-        label,
-        descs.map(d => new Float32Array(d))
-      )
-    })
+  async function readRegistros() {
+    try{
+      const response = await fetch('http://meuesp.local/registros')
+      const registros = await response.json()
+    
+      return registros.map(r => {
+        return new faceapi.LabeledFaceDescriptors(
+          r.label,
+          r.descriptors.map(d => new Float32Array(d))
+        )
+      })
+    }
+    catch(err) {
+      alert('erro: ' + err)
+      return []
+    }
   }
 
   async function startVideo() {
@@ -117,8 +118,20 @@
         : `${bestMatch.label} (${bestMatch.distance.toFixed(2)})`
         
       if(label != 'Desconhecido') {
-        setTimeout(() => {window.location.href='autorizado.html'}, 2000)
+        setTimeout(async() => {
+          await fectch('http://meuesp.local/verificar', {
+            method: 'POST',
+            headers: {'Content-Type' : 'application/json'},
+            body: JSON.stringify({'autenticado' : true})
+          })
+          window.location.href='autorizado.html'
+        }, 2000)
       }else{
+        await fectch('http://meuesp.local/verificar', {
+          method: 'POST',
+          headers: {'Content-Type' : 'application/json'},
+          body: JSON.stringify({'autenticado' : false})
+        })
         alert('acesso bloqueado!')
       }
       

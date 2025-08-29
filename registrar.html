@@ -80,15 +80,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script>
-  // Recupera registros do localStorage (reconstruindo Float32Array)
-  const registrosRaw = JSON.parse(localStorage.getItem('registrosList')) || []
-  const registros = registrosRaw.map(r =>
-    new faceapi.LabeledFaceDescriptors(
-      r.label,
-      r.descriptors.map(d => new Float32Array(d))
-    )
-  )
-  
   let estadoCameraAtual = 'user' // modo atual da camera
   let gravacaoAtual = null // gravação atual
   
@@ -162,26 +153,36 @@
     foto.src = data
     
     // registra o rosto na lista de pessoas autorizadas
-    const detection = await faceapi.detectSingleFace(foto, new faceapi.TinyFaceDetectorOptions()
-    )
-    .withFaceLandmarks()
-    .withFaceDescriptor()
+    const detection = await faceapi.detectSingleFace(foto, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceDescriptor()
     
     if(detection){
       const nome = prompt('Digite um nome para identificar esse rosto').trim()
       const labeledDescriptor = new faceapi.LabeledFaceDescriptors(nome, [detection.descriptor])
-      registros.push(labeledDescriptor)
-
-      // salva convertendo Float32Array -> Array
-      localStorage.setItem('registrosList', JSON.stringify(
-        registros.map(ld => ({
-          label: ld.label,
-          descriptors: ld.descriptors.map(d => Array.from(d))
-        }))
-      ))
-
-      alert('Rosto registrado')
-      window.location.href = 'index.html'
+      
+      const jsonData = {
+        id: new Date().getTime(),
+        label: labeledDescriptor.label,
+        descriptors: labeledDescriptor.descriptors.map(d => Array.from(d))
+      }
+      
+      try {
+        const response = await fetch('http://meuesp.local/registros', {
+          method: 'POST',
+          headers: {'Content-Type' : 'application/json'},
+          body: JSON.stringify(jsonData)
+        })
+      
+        if(response.ok){
+          alert('Rosto registrado com sucesso!')
+          window.location.href = 'index.html'
+        }
+        else{
+          alert('erro: ' + response.status)
+        }
+      }
+      catch(error){alert('erro: ' + error)}
     }
     else{
       alert('Nenhum rosto detectado na imagem, tente de novo')

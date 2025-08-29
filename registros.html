@@ -66,36 +66,40 @@
   <ul id="registros"></ul>
 
   <script>
-    function loadRegistros() {
+    async function loadRegistros() {
       const lista = document.getElementById("registros");
       lista.innerHTML = ""; // limpa a lista
-
-      const registros = JSON.parse(localStorage.getItem("registrosList")) || [];
-
-      registros.forEach((item, index) => {
-        const li = document.createElement("li");
-
-        // mostra apenas o nome (label) do rosto registrado
-        li.textContent = item.label;
-
-        // botão de deletar individual
-        const del = document.createElement("span");
-        del.textContent = "✖";
-        del.classList.add("delete");
-        del.onclick = () => {
-          registros.splice(index, 1);
-          localStorage.setItem("registrosList", JSON.stringify(registros));
-          loadRegistros();
-        };
-
-        li.appendChild(del);
-        lista.appendChild(li);
-      });
+      
+      try {
+        const response = await fetch('http://meuesp.local/registros')
+        const registros = await registros.json()
+        
+        registros.forEach(r => {
+          const li = document.createElement('li')
+          li.textContent = r.label
+          
+          // botão de deletar
+          const del = document.createElement('span')
+          del.textContent = '✖'
+          del.classList.add('delete')
+          del.onclick = async() => {
+            await fetch('http://meuesp.local/registros?id=' + r.id, {method: 'DELETE'})
+            loadRegistros()
+          }
+          
+          li.appendChild(del);
+          lista.appendChild(li);
+        })
+      }
+      catch(err){
+        alert('erro: ' + err)
+        return
+      }
     }
 
     // botão de deletar todos
-    document.getElementById("clearAll").onclick = () => {
-      localStorage.removeItem("registrosList");
+    document.getElementById("clearAll").onclick = async() => {
+      await fetch('http://meuesp.local/registros', {method: 'DELETE'})
       loadRegistros();
     };
 
