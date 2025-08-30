@@ -8,103 +8,227 @@
   <link rel="stylesheet" href="style.css">
   <style>
     body {
+      font-family: Arial, sans-serif;
       flex-direction: column;
       justify-content: flex-start;
       margin-top: 40px;
+      text-align: center;
     }
-    
+
     h1 {
       margin-bottom: 30px;
     }
 
     button {
-      padding: 8px 12px;
+      padding: 10px 16px;
       margin-bottom: 15px;
       background-color: darkblue;
       color: white;
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      transition: 0.2s;
     }
 
     button:hover {
       background-color: midnightblue;
+      transform: scale(1.05);
     }
 
     ul {
       list-style: none;
       padding: 0;
+      margin: auto;
       width: 80%;
+      max-width: 600px;
     }
 
     li {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px;
-      margin-bottom: 5px;
+      padding: 10px 15px;
+      margin-bottom: 8px;
       background: #f5f5f5;
       border-radius: 5px;
       color: black;
+      box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
     }
 
     .delete {
       cursor: pointer;
       color: red;
       font-weight: bold;
+      transition: 0.2s;
     }
 
     .delete:hover {
       color: midnightblue;
+      transform: scale(1.2);
+    }
+
+    /* Painel de Configuração */
+    #config-panel {
+      width: 100%;
+      height: 100%;
+      position: fixed;
+      background-color: rgba(0, 0, 0, 0.6);
+      top: 0;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #config-panel #container {
+      width: 80%;
+      max-width: 400px;
+      border-radius: 10px;
+      background-color: #ffffff;
+      color: black;
+      overflow-y: auto;
+      padding: 20px;
+      box-shadow: 0px 5px 20px rgba(0, 0, 0, 0.3);
+      animation: aparecer 0.3s ease-out;
+    }
+
+    @keyframes aparecer {
+      from {
+        transform: translateY(-30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    #field {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    #field label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    #field input {
+      display: block;
+      padding: 8px;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    #field input:focus {
+      border: 1px solid darkblue;
+      box-shadow: 0px 0px 5px rgba(0, 0, 255, 0.2);
+    }
+
+    #salvar {
+      width: 100%;
+      font-size: 1rem;
+    }
+
+    .success {
+      color: green;
+      font-size: 0.9rem;
+      margin-top: 10px;
+      display: none;
     }
   </style>
 </head>
 
 <body>
+  <button id="config" onclick="openConfig()" style="font-size: 1.5rem; background: none; cursor: pointer; margin-left: auto; margin-right: 15px">⚙</button>
   <h1>Lista de Registros</h1>
   <button id="clearAll">Deletar Todos</button>
   <ul id="registros"></ul>
 
+  <!-- Painel de Configuração -->
+  <div id="config-panel">
+    <div id="container">
+      <div id="field">
+        <label for="dns">Nome DNS:</label>
+        <input id="dns" placeholder="meuesp.local">
+      </div>
+      <button id="salvar">Salvar</button>
+      <p id="successMsg" class="success">✅ Salvo com sucesso!</p>
+    </div>
+  </div>
+
   <script>
+    let dns = localStorage.getItem('dns') ?? 'meuesp.local'
+    
     async function loadRegistros() {
       const lista = document.getElementById("registros");
-      lista.innerHTML = ""; // limpa a lista
-      
+      lista.innerHTML = "";
+
       try {
-        const response = await fetch('http://meuesp.local/registros')
-        const registros = await registros.json()
-        
+        const response = await fetch(`http://${dns}/registros`);
+        const registros = await response.json();
+
         registros.forEach(r => {
-          const li = document.createElement('li')
-          li.textContent = r.label
-          
-          // botão de deletar
-          const del = document.createElement('span')
-          del.textContent = '✖'
-          del.classList.add('delete')
-          del.onclick = async() => {
-            await fetch('http://meuesp.local/registros?id=' + r.id, {method: 'DELETE'})
-            loadRegistros()
-          }
-          
+          const li = document.createElement('li');
+          li.textContent = r.label;
+
+          const del = document.createElement('span');
+          del.textContent = '✖';
+          del.classList.add('delete');
+          del.onclick = async () => {
+            await fetch(`http://${dns}/registros?id=${r.id}`, { method: 'DELETE' });
+            loadRegistros();
+          };
+
           li.appendChild(del);
           lista.appendChild(li);
         })
       }
-      catch(err){
-        alert('erro: ' + err)
-        return
+      catch (err) {
+        alert('erro: ' + err);
       }
     }
 
-    // botão de deletar todos
-    document.getElementById("clearAll").onclick = async() => {
-      await fetch('http://meuesp.local/registros', {method: 'DELETE'})
+    // Botão deletar todos
+    document.getElementById("clearAll").onclick = async () => {
+      await fetch(`http://${dns}/registros`, { method: 'DELETE' })
       loadRegistros();
     };
 
-    // inicializa a lista
+    // Inicializa lista
     loadRegistros();
+
+    // Painel de config
+    const configPanel = document.querySelector('#config-panel');
+    function openConfig() {
+      configPanel.style.display = 'flex';
+      configPanel.onclick = e => {
+        if (!document.querySelector('#container').contains(e.target)) {
+          configPanel.style.display = 'none';
+        }
+      }
+    }
+
+    // Salvar configuração
+    document.getElementById("salvar").onclick = () => {
+      dns = document.getElementById("dns").value.trim();
+      localStorage.setItem('dns', dns)
+      
+      const msg = document.getElementById("successMsg");
+
+      if (!dns) {
+        alert("Digite um DNS válido!");
+        return;
+      }
+      msg.style.display = "block";
+      setTimeout(() => {
+        msg.style.display = "none";
+        configPanel.style.display = "none";
+      }, 1500);
+    };
   </script>
 </body>
 

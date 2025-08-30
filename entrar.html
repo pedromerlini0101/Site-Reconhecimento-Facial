@@ -40,6 +40,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script>
+  const dns = localStorage.getItem('dns') ?? 'meuesp.local'
+
   const video = document.querySelector('video')
   const canvas = document.querySelector('canvas')
   const ctx = canvas.getContext('2d')
@@ -47,7 +49,7 @@
   // --- Helpers ---
   async function readRegistros() {
     try{
-      const response = await fetch('http://meuesp.local/registros')
+      const response = await fetch(`http://${dns}/registros`)
       const registros = await response.json()
     
       return registros.map(r => {
@@ -119,7 +121,7 @@
         
       if(label != 'Desconhecido') {
         setTimeout(async() => {
-          await fectch('http://meuesp.local/verificar', {
+          await fetch(`http://${dns}/verificar`, {
             method: 'POST',
             headers: {'Content-Type' : 'application/json'},
             body: JSON.stringify({'autenticado' : true})
@@ -127,7 +129,7 @@
           window.location.href='autorizado.html'
         }, 2000)
       }else{
-        await fectch('http://meuesp.local/verificar', {
+        await fetch(`http://${dns}/verificar`, {
           method: 'POST',
           headers: {'Content-Type' : 'application/json'},
           body: JSON.stringify({'autenticado' : false})
