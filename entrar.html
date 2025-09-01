@@ -50,8 +50,9 @@
   async function readRegistros() {
     try{
       const response = await fetch(`http://${dns}/registros`)
-      const registros = await response.json()
-    
+      const registros = await response.text()
+      registros = JSON.parse(registros)
+      
       return registros.map(r => {
         return new faceapi.LabeledFaceDescriptors(
           r.label,
