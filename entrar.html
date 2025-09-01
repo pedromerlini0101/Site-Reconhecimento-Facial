@@ -50,8 +50,7 @@
   async function readRegistros() {
     try{
       const response = await fetch(`http://${dns}/registros`)
-      let registros = await response.text()
-      registros = JSON.parse(registros)
+      let registros = await response.json()
       
       return registros.map(r => {
         return new faceapi.LabeledFaceDescriptors(
@@ -130,12 +129,14 @@
           window.location.href='autorizado.html'
         }, 2000)
       }else{
-        await fetch(`http://${dns}/verificar`, {
-          method: 'POST',
-          headers: {'Content-Type' : 'application/json'},
-          body: JSON.stringify({'autenticado' : false})
-        })
-        alert('acesso bloqueado!')
+        setTimeout(async() => {
+          await fetch(`http://${dns}/verificar`, {
+            method: 'POST',
+            headers: {'Content-Type' : 'application/json'},
+            body: JSON.stringify({'autenticado' : false})
+          })
+          alert('acesso bloqueado!')
+        }, 2000)
       }
       
       // Desenha a caixa com o nome
