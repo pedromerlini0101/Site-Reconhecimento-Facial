@@ -148,7 +148,7 @@
   }
 
   async function main() {
-    const registros = readRegistros()
+    const registros = await readRegistros()
     console.log('Registros carregados:', registros.length)
 
     if (registros.length === 0) {
