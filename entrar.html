@@ -50,7 +50,7 @@
   async function readRegistros() {
     try{
       const response = await fetch(`http://${dns}/registros`)
-      const registros = await response.text()
+      let registros = await response.text()
       registros = JSON.parse(registros)
       
       return registros.map(r => {
