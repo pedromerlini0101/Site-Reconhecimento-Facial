@@ -161,14 +161,12 @@
   </div>
 
   <script>
-    let dns = localStorage.getItem('dns') ?? 'meuesp.local'
-    
     async function loadRegistros() {
       const lista = document.getElementById("registros");
       lista.innerHTML = "";
 
       try {
-        const response = await fetch(`http://${dns}/registros`);
+        const response = await fetch(`https://proxy-esp32.onrender.com/registros`);
         const registros = await response.json();
 
         registros.forEach(r => {
@@ -179,7 +177,7 @@
           del.textContent = '✖';
           del.classList.add('delete');
           del.onclick = async () => {
-            await fetch(`http://${dns}/registros?id=${r.id}`, { method: 'DELETE' });
+            await fetch(`https://proxy-esp32.onrender.com/registros?id=${r.id}`, { method: 'DELETE' });
             loadRegistros();
           };
 
@@ -194,7 +192,7 @@
 
     // Botão deletar todos
     document.getElementById("clearAll").onclick = async () => {
-      await fetch(`http://${dns}/registros`, { method: 'DELETE' })
+      await fetch(`https://proxy-esp32.onrender.com/registros`, { method: 'DELETE' })
       loadRegistros();
     };
 
@@ -213,16 +211,20 @@
     }
 
     // Salvar configuração
-    document.getElementById("salvar").onclick = () => {
-      dns = document.getElementById("dns").value.trim();
-      localStorage.setItem('dns', dns)
-      
+    document.getElementById("salvar").onclick = async() => {
+      const dns = document.getElementById("dns").value.trim();
       const msg = document.getElementById("successMsg");
 
       if (!dns) {
         alert("Digite um DNS válido!");
         return;
       }
+      
+      await fetch('https://proxy-esp32.onrender.com/dns', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({'dns' : dns})
+      })
       msg.style.display = "block";
       setTimeout(() => {
         msg.style.display = "none";
