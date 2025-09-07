@@ -40,29 +40,53 @@
 
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script>
-  const video = document.querySelector('video')
-  const canvas = document.querySelector('canvas')
-  const ctx = canvas.getContext('2d')
+  const video = document.querySelector('video');
+  const canvas = document.querySelector('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  const socket = new WebSocket('wss://server-esp32-0xa7.onrender.com/ws');
+  
+  let listaRegistros = null;
   
   // --- Helpers ---
-  async function readRegistros() {
-    try{
-      const response = await fetch('https://proxy-esp32.onrender.com/registros')
-      let registros = await response.json()
+  function requestRegistros() {
+    const request = {
+      route: '/registros',
+      method: 'GET'
+    };
+    socket.send(JSON.stringify(request));
+  }
+  
+  function requestVerificacao(autenticado) {
+    const request = {
+      route: '/verificar',
+      autenticado: autenticado
+    };
+    socket.send(JSON.stringify(request));
+  }
+  
+  // --- no start ---
+  socket.onopen = () => {
+    requestRegistros();
+  };
+  
+  // --- loop pra ler as respostas do ESP32 ---
+  socket.onmessage = e => {
+    const data = JSON.parse(e.data);
+    
+    if(data.route === '/registros' && data.method === 'GET'){
+      const registros = JSON.parse(data.response);
       
-      return registros.map(r => {
+      listaRegistros = registros.map(r => {
         return new faceapi.LabeledFaceDescriptors(
           r.label,
           r.descriptors.map(d => new Float32Array(d))
         )
-      })
+      });
     }
-    catch(err) {
-      alert('erro: ' + err)
-      return []
-    }
-  }
-
+  };
+  
+  // --- Helpers ---
   async function startVideo() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -118,22 +142,14 @@
         : `${bestMatch.label} (${bestMatch.distance.toFixed(2)})`
         
       if(label != 'Desconhecido') {
-        setTimeout(async() => {
-          await fetch('https://proxy-esp32.onrender.com/verificar', {
-            method: 'POST',
-            headers: {'Content-Type' : 'application/json'},
-            body: JSON.stringify({'autenticado' : true})
-          })
-          window.location.href='autorizado.html'
+        setTimeout(() => {
+          requestVerificacao(true);
+          window.location.href = 'autorizado.html';
         }, 2000)
       }else{
-        await fetch('https://proxy-esp32.onrender.com/verificar', {
-          method: 'POST',
-          headers: {'Content-Type' : 'application/json'},
-          body: JSON.stringify({'autenticado' : false})
-        })
-        alert('acesso bloqueado!')
-        window.location.href='entrar.html'
+        requestVerificacao(false);
+        alert('acesso bloqueado!');
+        window.location.href= 'entrar.html';
       }
       
       // Desenha a caixa com o nome
@@ -144,21 +160,23 @@
     // Próximo frame
     requestAnimationFrame(() => runLoop(faceMatcher))
   }
-
+  
   async function main() {
-    const registros = await readRegistros()
-    console.log('Registros carregados:', registros.length)
+    console.log('Registros carregados:', listaRegistros.length)
 
-    if (registros.length === 0) {
+    if (listaRegistros.length === 0) {
       alert('Nenhum registro salvo, a verificação não irá funcionar!')
       // Ainda assim inicializa o loop só com o retângulo (sem nome)
     }
 
-    const faceMatcher = new faceapi.FaceMatcher(registros, 0.6)
+    const faceMatcher = new faceapi.FaceMatcher(listaRegistros, 0.6)
 
     // Garante que o vídeo tenha dimensões antes de iniciar o loop
     if (video.readyState >= 2) {
-      runLoop(faceMatcher)
+      if(socket.readyState === WebSocket.OPEN)
+        runLoop(faceMatcher)
+      else
+        main()
     } else {
       video.addEventListener('loadedmetadata', () => runLoop(faceMatcher), { once: true })
     }

@@ -38,7 +38,6 @@
     ul {
       list-style: none;
       padding: 0;
-      margin: auto;
       width: 80%;
       max-width: 600px;
     }
@@ -66,170 +65,80 @@
       color: midnightblue;
       transform: scale(1.2);
     }
-
-    /* Painel de Configuração */
-    #config-panel {
-      width: 100%;
-      height: 100%;
-      position: fixed;
-      background-color: rgba(0, 0, 0, 0.6);
-      top: 0;
-      display: none;
-      justify-content: center;
-      align-items: center;
-    }
-
-    #config-panel #container {
-      width: 80%;
-      max-width: 400px;
-      border-radius: 10px;
-      background-color: #ffffff;
-      color: black;
-      overflow-y: auto;
-      padding: 20px;
-      box-shadow: 0px 5px 20px rgba(0, 0, 0, 0.3);
-      animation: aparecer 0.3s ease-out;
-    }
-
-    @keyframes aparecer {
-      from {
-        transform: translateY(-30px);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
-    }
-
-    #field {
-      margin-bottom: 20px;
-      text-align: left;
-    }
-
-    #field label {
-      font-weight: bold;
-      display: block;
-      margin-bottom: 6px;
-    }
-
-    #field input {
-      display: block;
-      padding: 8px;
-      width: 100%;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      outline: none;
-      transition: border 0.2s;
-    }
-
-    #field input:focus {
-      border: 1px solid darkblue;
-      box-shadow: 0px 0px 5px rgba(0, 0, 255, 0.2);
-    }
-
-    #salvar {
-      width: 100%;
-      font-size: 1rem;
-    }
-
-    .success {
-      color: green;
-      font-size: 0.9rem;
-      margin-top: 10px;
-      display: none;
-    }
   </style>
 </head>
 
 <body>
-  <button id="config" onclick="openConfig()" style="font-size: 1.5rem; background: none; cursor: pointer; margin-left: auto; margin-right: 15px">⚙</button>
   <h1>Lista de Registros</h1>
   <button id="clearAll">Deletar Todos</button>
   <ul id="registros"></ul>
-
-  <!-- Painel de Configuração -->
-  <div id="config-panel">
-    <div id="container">
-      <div id="field">
-        <label for="dns">Nome DNS:</label>
-        <input id="dns" placeholder="meuesp.local">
-      </div>
-      <button id="salvar">Salvar</button>
-      <p id="successMsg" class="success">✅ Salvo com sucesso!</p>
-    </div>
-  </div>
-
   <script>
-    async function loadRegistros() {
-      const lista = document.getElementById("registros");
-      lista.innerHTML = "";
-
-      try {
-        const response = await fetch(`https://proxy-esp32.onrender.com/registros`);
-        const registros = await response.json();
-
+  
+    const socket = WebSocket('wss://server-esp32-0xa7.onrender.com/ws')
+    
+    const lista = document.getElementById("registros");
+    lista.innerHTML = "";
+    
+    /* funções auxiliares */
+    function requestRegistros() {
+      const request = {
+        route: '/registros',
+        method: 'GET'
+      }
+      socket.send(JSON.stringify(request))
+    }
+    
+    function requestDelete(id = null) {
+      const request = {
+        route: '/registros',
+        method: 'DELETE',
+        id: id
+      }
+      socket.send(JSON.stringfy(request))
+    }
+    
+    /* função start */
+    socket.onopen = function() {
+      // pede os registros pro ESP32
+      requestRegistros()
+      
+      // quando o botão for apertado, faz a requisicao DELETE pro ESP32
+      document.querySelector('#clearAll').onclick = () => {
+        requestDelete()
+        requestRegistros()
+      }
+    };
+    
+    /* fica escutando as respostas do ESP32 */
+    socket.onmessage = function(e) {
+      const data = JSON.parse(e.data);
+      
+      if(data.route !== '/registros') return;
+      
+      if(data.method === 'GET'){
+        // pega os registros e desenha eles na tela
+        const registros = JSON.parse(data.response);
         registros.forEach(r => {
           const li = document.createElement('li');
           li.textContent = r.label;
-
+          
           const del = document.createElement('span');
           del.textContent = '✖';
           del.classList.add('delete');
-          del.onclick = async () => {
-            await fetch(`https://proxy-esp32.onrender.com/registros?id=${r.id}`, { method: 'DELETE' });
-            loadRegistros();
+          /*
+            adiciona uma função onclick 
+            no botão delete com id
+          */
+          del.onclick = () => {
+            requestDelete(r.id);
+            requestRegistros();
           };
-
-          li.appendChild(del);
-          lista.appendChild(li);
-        })
+          
+          // adiciona os elementos na tela
+          li.append(del);
+          lista.append(li);
+        });
       }
-      catch (err) {
-        alert('erro: ' + err);
-      }
-    }
-
-    // Botão deletar todos
-    document.getElementById("clearAll").onclick = async () => {
-      await fetch(`https://proxy-esp32.onrender.com/registros`, { method: 'DELETE' })
-      loadRegistros();
-    };
-
-    // Inicializa lista
-    loadRegistros();
-
-    // Painel de config
-    const configPanel = document.querySelector('#config-panel');
-    function openConfig() {
-      configPanel.style.display = 'flex';
-      configPanel.onclick = e => {
-        if (!document.querySelector('#container').contains(e.target)) {
-          configPanel.style.display = 'none';
-        }
-      }
-    }
-
-    // Salvar configuração
-    document.getElementById("salvar").onclick = async() => {
-      const dns = document.getElementById("dns").value.trim();
-      const msg = document.getElementById("successMsg");
-
-      if (!dns) {
-        alert("Digite um DNS válido!");
-        return;
-      }
-      
-      await fetch('https://proxy-esp32.onrender.com/dns', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({'dns' : dns})
-      })
-      msg.style.display = "block";
-      setTimeout(() => {
-        msg.style.display = "none";
-        configPanel.style.display = "none";
-      }, 1500);
     };
   </script>
 </body>
