@@ -48,21 +48,12 @@
   const GOOGLE_SHEET_URL = `https://script.google.com/macros/s/AKfycbx2Qm_PeVXKAnOUCIsGgSCVGLOlFRCKfHGYm
 FpDUn2Y9vh4VzlhbMXnU2se4j9pcy3kcw/exec`;
 
-  // --- loop pra ler as respostas do ESP32 ---
-  socket.onmessage = e => {
-    const data = JSON.parse(e.data);
-    
-    if(data.route === '/registros' && data.method === 'GET'){
-      const registros = JSON.parse(data.response);
-      
-      listaRegistros = registros.map(r => {
-        return new faceapi.LabeledFaceDescriptors(
-          r.label,
-          r.descriptors.map(d => new Float32Array(d))
-        )
-      });
-    }
-  };
+  listaRegistros = listaRegistros.map(r => {
+    return new faceapi.LabeledFaceDescriptors(
+      r.label,
+      r.descriptors.map(d => new Float32Array(d))
+    )
+  });
   
   // --- Helpers ---
   async function startVideo() {
