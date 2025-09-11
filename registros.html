@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -73,74 +72,35 @@
   <button id="clearAll">Deletar Todos</button>
   <ul id="registros"></ul>
   <script>
-  
-    const socket = WebSocket('wss://server-esp32-0xa7.onrender.com/ws')
-    
     const lista = document.getElementById("registros");
-    lista.innerHTML = "";
+    const clearAllBtn = document.getElementById("clearAll");
     
-    /* funções auxiliares */
-    function requestRegistros() {
-      const request = {
-        route: '/registros',
-        method: 'GET'
-      }
-      socket.send(JSON.stringify(request))
+    const registrosList = localStorage.getItem("registrosList") || [];
+    
+    function loadRegistros() {
+      registrosList.forEach(r => {
+        const registro = JSON.parse(r);
+        const li = document.createElement('li');
+        li.textContent = registro.label;
+      
+        const del = document.createElement('span');
+        del.textContent = '✖';
+        del.classList.add('delete');
+      
+        del.onclick = () => {
+          const index = registrosList.findIndex(e => e.id === r.id);
+          if(index !== -1) {
+            registrosList.splice(index, 1);
+            loadRegistros();
+          }
+        };
+      
+        li.append(del);
+        lista.append(li);
+      });
     }
     
-    function requestDelete(id = null) {
-      const request = {
-        route: '/registros',
-        method: 'DELETE',
-        id: id
-      }
-      socket.send(JSON.stringfy(request))
-    }
-    
-    /* função start */
-    socket.onopen = function() {
-      // pede os registros pro ESP32
-      requestRegistros()
-      
-      // quando o botão for apertado, faz a requisicao DELETE pro ESP32
-      document.querySelector('#clearAll').onclick = () => {
-        requestDelete()
-        requestRegistros()
-      }
-    };
-    
-    /* fica escutando as respostas do ESP32 */
-    socket.onmessage = function(e) {
-      const data = JSON.parse(e.data);
-      
-      if(data.route !== '/registros') return;
-      
-      if(data.method === 'GET'){
-        // pega os registros e desenha eles na tela
-        const registros = JSON.parse(data.response);
-        registros.forEach(r => {
-          const li = document.createElement('li');
-          li.textContent = r.label;
-          
-          const del = document.createElement('span');
-          del.textContent = '✖';
-          del.classList.add('delete');
-          /*
-            adiciona uma função onclick 
-            no botão delete com id
-          */
-          del.onclick = () => {
-            requestDelete(r.id);
-            requestRegistros();
-          };
-          
-          // adiciona os elementos na tela
-          li.append(del);
-          lista.append(li);
-        });
-      }
-    };
+    loadRegistros();
   </script>
 </body>
-
 </html>

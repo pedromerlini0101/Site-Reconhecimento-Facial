@@ -44,32 +44,10 @@
   const canvas = document.querySelector('canvas');
   const ctx = canvas.getContext('2d');
   
-  const socket = new WebSocket('wss://server-esp32-0xa7.onrender.com/ws');
-  
-  let listaRegistros = null;
-  
-  // --- Helpers ---
-  function requestRegistros() {
-    const request = {
-      route: '/registros',
-      method: 'GET'
-    };
-    socket.send(JSON.stringify(request));
-  }
-  
-  function requestVerificacao(autenticado) {
-    const request = {
-      route: '/verificar',
-      autenticado: autenticado
-    };
-    socket.send(JSON.stringify(request));
-  }
-  
-  // --- no start ---
-  socket.onopen = () => {
-    requestRegistros();
-  };
-  
+  let listaRegistros = localStorage.getItem('registrosList') || [];
+  const GOOGLE_SHEET_URL = `https://script.google.com/macros/s/AKfycbx2Qm_PeVXKAnOUCIsGgSCVGLOlFRCKfHGYm
+FpDUn2Y9vh4VzlhbMXnU2se4j9pcy3kcw/exec`;
+
   // --- loop pra ler as respostas do ESP32 ---
   socket.onmessage = e => {
     const data = JSON.parse(e.data);
@@ -143,12 +121,12 @@
         
       if(label != 'Desconhecido') {
         setTimeout(() => {
-          requestVerificacao(true);
+          await fetch(GOOGLE_SHEET_URL + `?acesso=Autorizado`);
           window.location.href = 'autorizado.html';
         }, 2000)
       }else{
-        requestVerificacao(false);
         alert('acesso bloqueado!');
+        await fetch(GOOGLE_SHEET_URL + `?acesso=Bloqueado`);
         window.location.href= 'entrar.html';
       }
       
@@ -162,7 +140,12 @@
   }
   
   async function main() {
-    console.log('Registros carregados:', listaRegistros.length)
+    if (!listaRegistros) {
+      console.error("listaRegistros ainda não carregada");
+      return;
+    }
+    
+    console.log("Registros carregados:", listaRegistros.length);
 
     if (listaRegistros.length === 0) {
       alert('Nenhum registro salvo, a verificação não irá funcionar!')
@@ -173,10 +156,7 @@
 
     // Garante que o vídeo tenha dimensões antes de iniciar o loop
     if (video.readyState >= 2) {
-      if(socket.readyState === WebSocket.OPEN)
-        runLoop(faceMatcher)
-      else
-        main()
+      runLoop(faceMatcher);
     } else {
       video.addEventListener('loadedmetadata', () => runLoop(faceMatcher), { once: true })
     }
