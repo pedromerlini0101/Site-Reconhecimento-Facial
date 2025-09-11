@@ -120,7 +120,7 @@ FpDUn2Y9vh4VzlhbMXnU2se4j9pcy3kcw/exec`;
         : `${bestMatch.label} (${bestMatch.distance.toFixed(2)})`
         
       if(label != 'Desconhecido') {
-        setTimeout(() => {
+        setTimeout(async() => {
           await fetch(GOOGLE_SHEET_URL + `?acesso=Autorizado`);
           window.location.href = 'autorizado.html';
         }, 2000)
