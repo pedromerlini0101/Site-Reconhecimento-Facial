@@ -75,7 +75,7 @@
     const lista = document.getElementById("registros");
     const clearAllBtn = document.getElementById("clearAll");
     
-    const registrosList = localStorage.getItem("registrosList") || [];
+    const registrosList = JSON.parse(localStorage.getItem("registrosList")) || [];
     
     function loadRegistros() {
       registrosList.forEach(r => {

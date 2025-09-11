@@ -85,7 +85,7 @@
   
   const GOOGLE_SHEET_URL = `https://script.google.com/macros/s/AKfycbx2Qm_PeVXKAnOUCIsGgSCVGLOlFRCKfHGYm
 FpDUn2Y9vh4VzlhbMXnU2se4j9pcy3kcw/exec`;
-  const registrosList = localStorage.getItem('registrosList') || [];
+  const registrosList = JSON.parse(localStorage.getItem('registrosList')) || [];
   const video = document.querySelector('video')
   
   // função pra acessar a camera e mostrar na tela
