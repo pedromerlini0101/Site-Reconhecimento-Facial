@@ -173,7 +173,7 @@ FpDUn2Y9vh4VzlhbMXnU2se4j9pcy3kcw/exec`;
       try {
         const response = await fetch(GOOGLE_SHEET_URL + `?registro=${jsonData.label}`);
         registrosList.push(jsonData);
-        localStorage.setItem('registrosList', registrosList);
+        localStorage.setItem('registrosList', JSON.stringify(registrosList));
         alert(await response.text());
         window.location.href = 'index.html';
       }

@@ -75,13 +75,13 @@
     const lista = document.getElementById("registros");
     const clearAllBtn = document.getElementById("clearAll");
     
-    const registrosList = JSON.parse(localStorage.getItem("registrosList")) || [];
+    let registrosList = JSON.parse(localStorage.getItem("registrosList")) || [];
     
     function loadRegistros() {
+      lista.innerHTML = "";
       registrosList.forEach(r => {
-        const registro = JSON.parse(r);
         const li = document.createElement('li');
-        li.textContent = registro.label;
+        li.textContent = r.label;
       
         const del = document.createElement('span');
         del.textContent = '✖';
@@ -91,6 +91,7 @@
           const index = registrosList.findIndex(e => e.id === r.id);
           if(index !== -1) {
             registrosList.splice(index, 1);
+            localStorage.setItem('registrosList', JSON.stringify(registrosList))
             loadRegistros();
           }
         };
@@ -101,6 +102,12 @@
     }
     
     loadRegistros();
+    
+     clearAllBtn.onclick = () => {
+       registrosList = [];
+       localStorage.removeItem('registrosList');
+       loadRegistros();
+     }
   </script>
 </body>
 </html>
